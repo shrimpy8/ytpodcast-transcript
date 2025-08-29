@@ -1,15 +1,23 @@
-# YouTube Podcast Channel Transcript Downloader
+# YouTube Transcript Downloader Utility
 
-A comprehensive shell script that downloads and processes transcripts from all episodes in a YouTube podcast channel or playlist. The script extracts clean, deduplicated transcripts suitable for further processing such as summarization.
+A comprehensive shell script that downloads and processes transcripts from YouTube videos. Supports both single video processing and batch processing of entire channels/playlists. The script extracts clean, deduplicated transcripts suitable for further processing such as summarization.
 
 ## Features
 
-- **Batch Processing**: Downloads transcripts from all videos in a YouTube channel or playlist
+- **Interactive User Interface**: Welcome screen with clear options for single videos or channels
+- **Dual Processing Modes**: 
+  - Single video transcript download with confirmation
+  - Channel/playlist batch processing (up to 60 videos)
 - **Intelligent Deduplication**: Removes repetitive content common in auto-generated transcripts
 - **Speaker Detection**: Automatically identifies and labels Host/Guest speakers based on content patterns
 - **Clean Output**: Removes timestamps, sequence numbers, and formatting artifacts
+- **Video Metadata**: Includes video titles, URLs, and publish dates in all outputs
+- **Run Summary Files**: Creates timestamped summary files with complete video information
+- **Interactive Batch Navigation**: Browse through videos in groups of 5 with user control
+- **60-Video Limit**: Processes maximum first 60 videos from channels to ensure reasonable processing times
+- **Input Validation**: Comprehensive error handling for URLs and user choices
 - **Fallback Support**: Works with or without Python (with reduced functionality)
-- **Robust Error Handling**: Continues processing even when some videos lack transcripts
+- **Best Effort Processing**: Clear disclaimers about transcript quality and potential duplicates
 
 ## Prerequisites
 
@@ -41,32 +49,64 @@ A comprehensive shell script that downloads and processes transcripts from all e
 
 ## Usage
 
-### Basic Usage
+### Interactive Mode
+Simply run the script and follow the interactive prompts:
 ```bash
-./ytpodcast_channel_transcript_downloader.sh <playlist_or_channel_url>
+./ytpodcast_channel_transcript_downloader.sh
 ```
 
-### Examples
-```bash
-# Process a specific playlist
-./ytpodcast_channel_transcript_downloader.sh "https://www.youtube.com/playlist?list=PLrAXtmRdnEQy6nuLMhI_0NMIx4zjJ_LCo"
+The script will present you with three options:
+1. **Download transcripts from a YouTube channel** - Process up to 60 videos from a channel/playlist
+2. **Download transcript from a single YouTube video** - Process one specific video
+3. **Exit** - Quit the application
 
-# Process all videos from a channel
-./ytpodcast_channel_transcript_downloader.sh "https://www.youtube.com/@channelname"
+### Single Video Mode
+When you select option 2:
+1. Enter a YouTube video URL (e.g., `https://www.youtube.com/watch?v=VIDEO_ID`)
+2. Review the video details (title, publish date, URL)
+3. Confirm whether to proceed with transcript processing
+4. Get instant results with summary file
+
+### Channel Mode  
+When you select option 1:
+1. Enter a channel or playlist URL
+2. View total video count and first 60 videos limit notification
+3. Browse videos in batches of 5 with titles, URLs, and publish dates
+4. Choose to process current batch, skip to next 5, or exit
+5. Navigate through all available videos with user control
+
+### Example URLs
+```bash
+# Single video
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+# Channel
+https://www.youtube.com/@channelname
+
+# Playlist
+https://www.youtube.com/playlist?list=PLrAXtmRdnEQy6nuLMhI_0NMIx4zjJ_LCo
 ```
 
 ## How It Works
 
-### 1. Video Discovery
-- Extracts video IDs and titles from the provided channel/playlist URL
-- Creates a processing queue with all available videos
+### 1. User Interface & Input Validation
+- **Interactive Welcome Screen**: Presents clear options and usage information
+- **URL Validation**: Checks for valid YouTube URLs and provides helpful examples
+- **Input Sanitization**: Validates user choices and handles errors gracefully
+- **Confirmation Prompts**: Asks for user confirmation before processing (especially for single videos)
 
-### 2. Subtitle Download
+### 2. Video Discovery & Metadata Extraction
+- Extracts video IDs, titles, and **publish dates** from provided URLs
+- **60-Video Limit**: For channels, processes maximum first 60 videos to ensure reasonable processing times
+- Creates comprehensive metadata for summary files
+- Displays video information with publish dates for user review
+
+### 3. Subtitle Download
 - Downloads auto-generated subtitles in SRT format using yt-dlp
 - Supports English subtitles with automatic language detection
 - Skips videos without available transcripts
 
-### 3. Content Processing
+### 4. Content Processing
 
 #### With Python (Advanced Mode)
 - **Text Extraction**: Parses SRT files to extract clean text segments
@@ -83,19 +123,26 @@ A comprehensive shell script that downloads and processes transcripts from all e
 - Simple duplicate line detection
 - Less sophisticated but still functional
 
-### 4. File Organization
-- Creates `transcripts/` directory for output files
-- Names files using format: `{number}_{video_id}_{clean_title}.txt`
-- Includes metadata (title, video ID, URL) in each transcript file
+### 5. File Organization & Summary Generation
+- **Transcript Files**: Creates `transcripts/` directory for output files
+- **File Naming**: Uses format `{number}_{video_id}_{clean_title}.txt`
+- **Enhanced Metadata**: Includes title, video ID, URL, and **publish date** in each transcript file
+- **Run Summary Files**: Creates timestamped summary file `yt-transcript-run_YYYYMMDD_HHMMSS.txt` containing:
+  - Complete session information
+  - All video titles, URLs, and publish dates
+  - Channel name or video details
+  - Total video count and processing timestamp
 
 ## Output Structure
 
 Each generated transcript file contains:
 
+### Transcript Files
 ```
 # Video Title
 Video ID: ABC123DEF456
 URL: https://www.youtube.com/watch?v=ABC123DEF456
+Published: January 15, 2024
 
 ## Transcript:
 
@@ -105,6 +152,28 @@ URL: https://www.youtube.com/watch?v=ABC123DEF456
 
 ---
 *Note: Speaker identification is automated and may not be 100% accurate.*
+```
+
+### Summary Files (yt-transcript-run_YYYYMMDD_HHMMSS.txt)
+```
+YouTube Transcript Download Summary
+Generated: Thu Jan 15 14:30:22 PST 2024
+==========================================
+
+Type: Channel/Playlist
+Channel Name: AI Podcast Network
+Source URL: https://www.youtube.com/@aipodcast
+Total Videos: 25
+
+Videos available:
+1. Building AI Systems at Scale
+   URL: https://www.youtube.com/watch?v=ABC123
+   Published: January 14, 2024
+
+2. The Future of Machine Learning
+   URL: https://www.youtube.com/watch?v=DEF456
+   Published: January 12, 2024
+...
 ```
 
 ## Configuration
@@ -134,12 +203,15 @@ The script implements multi-pass deduplication:
 - **Guest Indicators**: "thanks for having me", "in my experience", "what we found"
 - Automatically switches speaker labels based on detected patterns
 
-## Limitations
+## Limitations & Disclaimers
 
-- Only processes videos with available auto-generated or manual subtitles
-- Speaker detection accuracy depends on content patterns (typical podcast format)
-- Requires stable internet connection for downloading subtitles
-- Processing time scales with number of videos in channel/playlist
+- **Transcript Quality**: Best effort processing - transcripts may not be 100% clean and may contain duplicate sentences or formatting issues
+- **Subtitle Dependency**: Only processes videos with available auto-generated or manual subtitles
+- **Speaker Detection**: Accuracy depends on content patterns (optimized for typical podcast format)
+- **60-Video Limit**: Channels are limited to first 60 videos to ensure reasonable processing times
+- **Network Dependency**: Requires stable internet connection for downloading subtitles and video metadata
+- **Processing Time**: Scales with number of videos selected for processing
+- **Date Formatting**: Publish dates depend on YouTube metadata availability
 
 ## Future Enhancement Opportunities
 

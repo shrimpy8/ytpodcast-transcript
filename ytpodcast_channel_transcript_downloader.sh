@@ -2,16 +2,77 @@
 
 # Improved YouTube transcript downloader with aggressive deduplication
 # Configuration
-PLAYLIST_URL="$1"
 OUTPUT_DIR="transcripts"
 TEMP_DIR="temp"
 
+# Welcome message and user input
+echo "=================================================="
+echo "  YouTube Transcript Downloader Utility"
+echo "=================================================="
+echo ""
+echo "This simple utility helps you download text transcripts of YouTube videos."
+echo "You can either provide a channel URL or a direct YouTube video URL."
+echo ""
+echo "Note: This is best effort transcript processing. Transcripts may not be"
+echo "100% clean and there may be some duplicate sentences or formatting issues."
+echo ""
+echo "For channels: Processes maximum first 60 videos from the channel."
+echo ""
+echo "What would you like to do?"
+echo "1. Download transcripts from a YouTube channel"
+echo "2. Download transcript from a single YouTube video"
+echo "3. Exit"
+echo ""
+echo -n "Enter your choice (1-3): "
+read -r user_choice
+echo ""
+
+case $user_choice in
+    1)
+        echo "You selected: Channel URL"
+        echo -n "Please enter the YouTube channel URL: "
+        read -r PLAYLIST_URL
+        URL_TYPE="channel"
+        ;;
+    2)
+        echo "You selected: Direct Video URL"
+        echo -n "Please enter the YouTube video URL: "
+        read -r PLAYLIST_URL
+        URL_TYPE="video"
+        ;;
+    3)
+        echo "Exiting..."
+        exit 0
+        ;;
+    *)
+        echo "Invalid choice. Please run the script again and select 1, 2, or 3."
+        exit 1
+        ;;
+esac
+
+# Validate URL input
 if [ -z "$PLAYLIST_URL" ]; then
-    echo "Usage: $0 <playlist_or_channel_url>"
-    echo "Example: $0 https://www.youtube.com/playlist?list=..."
-    echo "Example: $0 https://www.youtube.com/@channelname"
+    echo "Error: No URL provided. Exiting."
     exit 1
 fi
+
+# Basic URL validation
+if [[ ! "$PLAYLIST_URL" =~ ^https?://(www\.)?(youtube\.com|youtu\.be) ]]; then
+    echo "Error: Please provide a valid YouTube URL."
+    echo "Examples:"
+    echo "  Channel: https://www.youtube.com/@channelname"
+    echo "  Playlist: https://www.youtube.com/playlist?list=..."
+    echo "  Video: https://www.youtube.com/watch?v=..."
+    exit 1
+fi
+
+echo ""
+echo "Processing URL: $PLAYLIST_URL"
+echo ""
+
+# Create timestamp for run summary
+RUN_TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+SUMMARY_FILE="yt-transcript-run_${RUN_TIMESTAMP}.txt"
 
 # Function to aggressively clean transcript from SRT
 extract_clean_transcript() {
@@ -242,33 +303,19 @@ simple_cleanup() {
     echo "*Note: Speaker identification is automated and may not be 100% accurate.*" >> "$output_file"
 }
 
-# Create directories
-mkdir -p "$OUTPUT_DIR" "$TEMP_DIR"
-
-echo "Extracting video information..."
-yt-dlp --get-id --get-title "$PLAYLIST_URL" > "$TEMP_DIR/video_info.txt"
-
-video_count=$(wc -l < "$TEMP_DIR/video_info.txt")
-video_pairs=$((video_count / 2))
-
-echo "Found $video_pairs videos"
-
-# Process each video
-line_num=1
-video_num=1
-while [ $line_num -le $video_count ]; do
-    title=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
-    line_num=$((line_num + 1))
-    video_id=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
-    line_num=$((line_num + 1))
+# Function to process a single video
+process_single_video() {
+    local title="$1"
+    local video_id="$2"
+    local video_url="$3"
+    local video_num="$4"
     
     # Clean title for filename
     clean_title=$(echo "$title" | sed 's/[^a-zA-Z0-9 ]//g' | sed 's/ /_/g' | cut -c1-50)
     
-    echo "Processing ($video_num/$video_pairs): $title"
+    echo "Processing: $title"
     
     output_file="$OUTPUT_DIR/${video_num}_${video_id}_${clean_title}.txt"
-    video_url="https://www.youtube.com/watch?v=${video_id}"
     
     # Download subtitle with better options
     yt-dlp --write-auto-subs --skip-download \
@@ -310,20 +357,383 @@ while [ $line_num -le $video_count ]; do
         
         # Clean up temp files
         rm -f "${TEMP_DIR}/${video_id}."*
+        
+        return 0
     else
         echo "✗ No transcript available for: $title"
+        return 1
+    fi
+}
+
+# Create directories
+mkdir -p "$OUTPUT_DIR" "$TEMP_DIR"
+
+echo "Extracting video information..."
+
+# Branch based on URL type
+if [ "$URL_TYPE" = "video" ]; then
+    # Single video processing - get title, id, and upload date
+    yt-dlp --get-id --get-title --get-filename -o "%(upload_date)s" "$PLAYLIST_URL" > "$TEMP_DIR/video_info.txt"
+    
+    video_count=$(wc -l < "$TEMP_DIR/video_info.txt")
+    video_pairs=$((video_count / 3))  # Now we have title, id, and date
+    
+    if [ $video_pairs -eq 0 ]; then
+        echo "Error: Could not extract video information. Please check the URL."
+        rm -rf "$TEMP_DIR"
+        exit 1
     fi
     
-    video_num=$((video_num + 1))
+    # Get video details
+    title=$(sed -n "1p" "$TEMP_DIR/video_info.txt")
+    video_id=$(sed -n "2p" "$TEMP_DIR/video_info.txt")
+    upload_date=$(sed -n "3p" "$TEMP_DIR/video_info.txt")
+    
+    # Format upload date for display
+    if [ -n "$upload_date" ] && [ "$upload_date" != "NA" ]; then
+        formatted_date=$(date -j -f "%Y%m%d" "$upload_date" "+%B %d, %Y" 2>/dev/null || echo "$upload_date")
+    else
+        formatted_date="Unknown"
+    fi
+    
+    echo "Found video: $title"
+    echo "Published: $formatted_date"
+    echo "URL: $PLAYLIST_URL"
+    echo ""
+    
+    # Create summary file for single video immediately after extraction
+    {
+        echo "YouTube Transcript Download Summary"
+        echo "Generated: $(date)"
+        echo "=========================================="
+        echo ""
+        echo "Type: Single Video"
+        echo "Video Title: $title"
+        echo "Video URL: $PLAYLIST_URL"
+        echo "Video ID: $video_id"
+        echo "Published: $formatted_date"
+        echo "Total Videos: 1"
+        echo ""
+        echo "Video information:"
+        echo "1. $title"
+        echo "   URL: $PLAYLIST_URL"
+        echo "   Published: $formatted_date"
+        echo ""
+    } > "$SUMMARY_FILE"
+    
+    echo "Summary file created: $SUMMARY_FILE"
+    echo ""
+    
+    # Ask for confirmation before processing
+    echo -n "Do you want to proceed with downloading the transcript? (y/n): "
+    read -r proceed_choice
+    
+    if [[ ! "$proceed_choice" =~ ^[Yy] ]]; then
+        echo "Processing cancelled by user."
+        rm -rf "$TEMP_DIR"
+        exit 0
+    fi
+    
+    echo ""
+    
+    # Process single video
+    process_single_video "$title" "$video_id" "$PLAYLIST_URL" "1"
+    
+else
+    # Channel/playlist processing - get title, id, and upload date
+    yt-dlp --get-id --get-title --get-filename -o "%(upload_date)s" "$PLAYLIST_URL" > "$TEMP_DIR/video_info.txt"
+    
+    video_count=$(wc -l < "$TEMP_DIR/video_info.txt")
+    video_pairs=$((video_count / 3))  # Now we have title, id, and date
+    
+    # Implement 60-video limit
+    if [ $video_pairs -gt 60 ]; then
+        echo "Found $video_pairs videos in channel. Limiting to first 60 videos as per policy."
+        video_pairs=60
+        # Truncate the file to only include first 60 videos (180 lines)
+        head -n 180 "$TEMP_DIR/video_info.txt" > "$TEMP_DIR/video_info_limited.txt"
+        mv "$TEMP_DIR/video_info_limited.txt" "$TEMP_DIR/video_info.txt"
+        video_count=180
+    fi
+    
+    if [ $video_pairs -eq 0 ]; then
+        echo "Error: Could not extract video information. Please check the URL."
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
+    
+    # Get channel name (try to extract from first video or use URL)
+    channel_name="Unknown Channel"
+    if command -v yt-dlp >/dev/null 2>&1; then
+        channel_name=$(yt-dlp --get-filename -o "%(channel)s" "$PLAYLIST_URL" 2>/dev/null | head -1)
+        if [ -z "$channel_name" ] || [ "$channel_name" = "NA" ]; then
+            channel_name="YouTube Channel"
+        fi
+    fi
+    
+    echo "Found $video_pairs videos in the channel: $channel_name"
+    echo ""
+    
+    # Create summary file header for channel
+    {
+        echo "YouTube Transcript Download Summary"
+        echo "Generated: $(date)"
+        echo "=========================================="
+        echo ""
+        echo "Type: Channel/Playlist"
+        echo "Channel Name: $channel_name"
+        echo "Source URL: $PLAYLIST_URL"
+        echo "Total Videos: $video_pairs"
+        echo ""
+        echo "Videos available:"
+    } > "$SUMMARY_FILE"
+    
+    # Add all videos to summary file
+    line_num=1
+    video_num=1
+    while [ $line_num -le $video_count ]; do
+        title=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        video_id=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        upload_date=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        video_url="https://www.youtube.com/watch?v=${video_id}"
+        
+        # Format upload date for display
+        if [ -n "$upload_date" ] && [ "$upload_date" != "NA" ]; then
+            formatted_date=$(date -j -f "%Y%m%d" "$upload_date" "+%B %d, %Y" 2>/dev/null || echo "$upload_date")
+        else
+            formatted_date="Unknown"
+        fi
+        
+        echo "$video_num. $title" >> "$SUMMARY_FILE"
+        echo "   URL: $video_url" >> "$SUMMARY_FILE"
+        echo "   Published: $formatted_date" >> "$SUMMARY_FILE"
+        echo "" >> "$SUMMARY_FILE"
+        
+        video_num=$((video_num + 1))
+    done
+    
+    echo "Summary file created: $SUMMARY_FILE"
+    echo ""
+fi
+
+# Only run interactive processing for channels, not single videos
+if [ "$URL_TYPE" = "video" ]; then
+    # Single video is already processed above, just clean up and exit
+    echo ""
+    echo "Single video processing complete!"
+else
+    # Continue with channel batch processing
+    
+# Function to display batch of videos
+display_video_batch() {
+    local start_video="$1"
+    local batch_size=5
+    local end_video=$((start_video + batch_size - 1))
+    
+    if [ $end_video -gt $video_pairs ]; then
+        end_video=$video_pairs
+    fi
+    
+    echo "Videos $start_video to $end_video (of $video_pairs total):"
+    echo "================================================="
+    
+    local line_num=$(((start_video - 1) * 3 + 1))  # Now 3 lines per video
+    local display_num=$start_video
+    
+    while [ $display_num -le $end_video ]; do
+        local title=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        local video_id=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        local upload_date=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        local video_url="https://www.youtube.com/watch?v=${video_id}"
+        
+        # Format upload date for display
+        if [ -n "$upload_date" ] && [ "$upload_date" != "NA" ]; then
+            local formatted_date=$(date -j -f "%Y%m%d" "$upload_date" "+%B %d, %Y" 2>/dev/null || echo "$upload_date")
+        else
+            local formatted_date="Unknown"
+        fi
+        
+        echo "$display_num. $title"
+        echo "   URL: $video_url"
+        echo "   Published: $formatted_date"
+        echo ""
+        
+        display_num=$((display_num + 1))
+    done
+}
+
+# Function to process selected videos
+process_video_batch() {
+    local start_video="$1"
+    local batch_size=5
+    local end_video=$((start_video + batch_size - 1))
+    
+    if [ $end_video -gt $video_pairs ]; then
+        end_video=$video_pairs
+    fi
+    
+    echo "Processing videos $start_video to $end_video..."
+    echo ""
+    
+    local line_num=$(((start_video - 1) * 3 + 1))  # Now 3 lines per video
+    local video_num=$start_video
+    
+    while [ $video_num -le $end_video ]; do
+        title=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        video_id=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        upload_date=$(sed -n "${line_num}p" "$TEMP_DIR/video_info.txt")
+        line_num=$((line_num + 1))
+        
+        # Clean title for filename
+        clean_title=$(echo "$title" | sed 's/[^a-zA-Z0-9 ]//g' | sed 's/ /_/g' | cut -c1-50)
+        
+        echo "Processing ($video_num/$video_pairs): $title"
+        
+        output_file="$OUTPUT_DIR/${video_num}_${video_id}_${clean_title}.txt"
+        video_url="https://www.youtube.com/watch?v=${video_id}"
+        
+        # Download subtitle with better options
+        yt-dlp --write-auto-subs --skip-download \
+               --sub-lang en --convert-subs srt \
+               --sub-format "best[ext=srt]" \
+               -o "$TEMP_DIR/%(id)s.%(ext)s" \
+               "$video_url" 2>/dev/null
+        
+        # Find subtitle file
+        srt_file=""
+        for possible_file in "$TEMP_DIR/${video_id}.srt" "$TEMP_DIR/${video_id}.en.srt"; do
+            if [[ -f "$possible_file" ]]; then
+                srt_file="$possible_file"
+                break
+            fi
+        done
+        
+        if [[ -n "$srt_file" && -f "$srt_file" ]]; then
+            # Create file header
+            {
+                echo "# $title"
+                echo "Video ID: $video_id"
+                echo "URL: $video_url"
+                echo ""
+                echo "## Transcript:"
+                echo ""
+            } > "$output_file"
+            
+            # Process transcript
+            if command -v python3 >/dev/null 2>&1; then
+                echo "Using Python-based aggressive deduplication..."
+                extract_clean_transcript "$srt_file" "$output_file"
+            else
+                echo "Python not found, using basic cleanup..."
+                simple_cleanup "$srt_file" "$output_file"
+            fi
+            
+            echo "✓ Created: $output_file"
+            
+            # Clean up temp files
+            rm -f "${TEMP_DIR}/${video_id}."*
+        else
+            echo "✗ No transcript available for: $title"
+        fi
+        
+        video_num=$((video_num + 1))
+    done
+}
+
+# Interactive batch processing
+current_start=1
+
+while [ $current_start -le $video_pairs ]; do
+    # Display current batch
+    display_video_batch $current_start
+    
+    # Calculate if there are more videos after this batch
+    next_batch_start=$((current_start + 5))
+    has_more_videos=false
+    if [ $next_batch_start -le $video_pairs ]; then
+        has_more_videos=true
+    fi
+    
+    # Present options
+    echo "What would you like to do?"
+    echo "1. Process these videos (create markdown transcripts)"
+    if [ $has_more_videos = true ]; then
+        echo "2. Skip to next 5 videos"
+        echo "3. Exit"
+        echo -n "Enter your choice (1-3): "
+    else
+        echo "2. Exit"
+        echo -n "Enter your choice (1-2): "
+    fi
+    
+    read -r choice
+    echo ""
+    
+    case $choice in
+        1)
+            process_video_batch $current_start
+            echo "Batch processing complete!"
+            echo ""
+            if [ $has_more_videos = true ]; then
+                echo -n "Continue to next batch? (y/n): "
+                read -r continue_choice
+                if [[ "$continue_choice" =~ ^[Yy] ]]; then
+                    current_start=$next_batch_start
+                else
+                    break
+                fi
+            else
+                echo "All videos processed!"
+                break
+            fi
+            ;;
+        2)
+            if [ $has_more_videos = true ]; then
+                current_start=$next_batch_start
+            else
+                echo "Exiting..."
+                break
+            fi
+            ;;
+        3)
+            if [ $has_more_videos = true ]; then
+                echo "Exiting..."
+                break
+            else
+                echo "Invalid choice. Please try again."
+            fi
+            ;;
+        *)
+            echo "Invalid choice. Please try again."
+            echo ""
+            ;;
+    esac
 done
+
+fi  # End of channel processing conditional
 
 # Clean up
 rm -rf "$TEMP_DIR"
 
 echo ""
-echo "Transcript extraction complete!"
-echo "Files created in $OUTPUT_DIR/:"
-ls -1 "$OUTPUT_DIR" | head -5
-if [ $(ls -1 "$OUTPUT_DIR" | wc -l) -gt 5 ]; then
-    echo "... and $(($(ls -1 "$OUTPUT_DIR" | wc -l) - 5)) more files"
+echo "Session complete!"
+if [ -d "$OUTPUT_DIR" ] && [ "$(ls -A $OUTPUT_DIR 2>/dev/null)" ]; then
+    echo "Files created in $OUTPUT_DIR/:"
+    ls -1 "$OUTPUT_DIR" | head -5
+    if [ $(ls -1 "$OUTPUT_DIR" | wc -l) -gt 5 ]; then
+        echo "... and $(($(ls -1 "$OUTPUT_DIR" | wc -l) - 5)) more files"
+    fi
+else
+    echo "No transcript files were created."
 fi
+
+echo ""
+echo "Summary file: $SUMMARY_FILE"
