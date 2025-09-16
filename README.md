@@ -1,4 +1,39 @@
-# YouTube Transcript Downloader Utility
+# YouTube Transcript Downloader
+
+A comprehensive solution for downloading and processing YouTube video transcripts with advanced deduplication and speaker detection. Available in two versions:
+
+> **🆕 New**: Modern web application now available! See the `modern-web-app` branch for the latest Next.js version.
+
+## 🚀 **Modern Web Application** (Recommended)
+**Location**: `ytpodcast-transcript2/`  
+**Tech Stack**: Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui
+
+A beautiful, modern web application with:
+- **Intuitive UI/UX** - Clean, responsive interface
+- **Real-time Processing** - Live progress updates
+- **Multiple Export Formats** - TXT, JSON, SRT, WebVTT
+- **Advanced Features** - Same powerful processing as shell script
+- **No Installation** - Just open in browser
+
+[**→ Try the Web App**](./ytpodcast-transcript2/README.md)
+
+## 📊 **Which Version Should You Use?**
+
+| Feature | Web App | Shell Script |
+|---------|---------|--------------|
+| **Ease of Use** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **Installation** | None required | Requires yt-dlp |
+| **UI/UX** | Modern, beautiful | Command line |
+| **Export Formats** | TXT, JSON, SRT, WebVTT | TXT only |
+| **Progress Tracking** | Real-time updates | Basic progress |
+| **Mobile Support** | ✅ Full support | ❌ Desktop only |
+| **Batch Processing** | ✅ With progress UI | ✅ Advanced options |
+| **Customization** | Limited | Full control |
+
+**Recommendation**: Use the **Web App** for most users, **Shell Script** for advanced automation and customization.
+
+## 🖥️ **Original Shell Script**
+**Location**: `ytpodcast_channel_transcript_downloader.sh`
 
 A comprehensive shell script that downloads and processes transcripts from YouTube videos. Supports both single video processing and batch processing of entire channels/playlists. The script extracts clean, deduplicated transcripts suitable for further processing such as summarization.
 
