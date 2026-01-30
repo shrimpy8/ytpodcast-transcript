@@ -18,3 +18,30 @@ https://www.youtube.com/watch?v=PM_WegIlNls
 https://www.youtube.com/watch?v=xW5y2Yv_E2Y
 https://www.youtube.com/watch?v=OCw145kwwLs
 https://www.youtube.com/watch?v=KVZ3vMx_aJ4
+
+
+https://www.youtube.com/@How%20I%20AI
+
+https://www.youtube.com/@howiaipodcast
+
+https://www.youtube.com/watch?v=47SlwClRJYE
+
+https://www.youtube.com/watch?v=FO16_cJPNcA&list=PLIWHjbvRtljj4RewVNv_znkUe-3E-NKd2&index=9
+
+
+I am a product manager and I like to see or listien to good podcast on AI tools, Technology Trends, Product Managment best practices etc. I am a regular listener to Podcast like How I AI Podcast by Clair Vo, Behind the Craft Podcast by Peter Yang and Lenny's Podcast. I have given for each podcast the description and top covered by it.
+
+"""
+How I AI Podcast by Clair Vo:
+How I AI, hosted by Claire Vo, is for anyone wondering how to actually use these magical new tools to improve the quality and efficiency of their work. In each episode, guests will share a specific, practical, and impactful way they’ve learned to use AI in their work or life. Expect 30-minute episodes, live screen sharing, and tips/tricks/workflows you can copy immediately. If you want to demystify AI and learn the skills you need to thrive in this new world, this podcast is for you."""
+
+"""
+Lenny's Podcast :
+Interviews with world-class product leaders and growth experts to uncover concrete, actionable, and tactical advice to help you build, launch, and grow your own product."""
+
+""" 
+Behind the Craft Podcast by. Peter Yang:
+Extremely practical AI tutorials and expert interviews for busy people."""
+
+I would like to you to plan for a feature where user has a choice to select specific LLM provider to get the key insight from the topic catpured in the transcript of the podcast. The user should be able to get key insight from this summary whethere it is a AI tool best practices, specific workflow to use it in the tool, or product management technique to utilize , it should captured in the summary. It is important to that critical details discuss in the podcast should be succeccently captured. In order to do , I want you to create very carefully crafted prompt.md file so LLMs can extract exellent details from it. The user should have option to select one LLM such as from Anthropic Sonnet 4.5 , Google Gemini 2.5 Flash,or Perplexity Sonnar. The feature should use the APIs provided by AI Providers. We need to make sure LLM should make things up and keep the summary truly based ont the transcript only.
+I want you to think ultra hard on this feature and it should be shown in a third tab named as "AI Summary". The user can also have option to select "All LLMs". If such option is select then user should see summary from all three LLMs displayed in the UI. The user should have ability to copy, or download the summary from each LLMs. Please confirm you understand the ask. 

@@ -1,5 +1,10 @@
 # YouTube Transcript Downloader
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
+![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![Shell](https://img.shields.io/badge/Shell-Bash-green)
+
 A comprehensive solution for downloading and processing YouTube video transcripts with advanced deduplication and speaker detection. Available in two versions:
 
 > **🆕 New**: Modern web application now available! See the `modern-web-app` branch for the latest Next.js version.
@@ -297,6 +302,19 @@ Potential improvements:
 - Add progress bars for long-running processes
 - Support for custom output formats (JSON, CSV)
 - Integration with transcript databases
+
+## Security
+
+### Web Application Security
+- **Zero npm Vulnerabilities**: All dependencies regularly audited and updated
+- **No Hardcoded Secrets**: All sensitive data uses environment variables
+- **Input Validation**: All user inputs validated and sanitized
+- **TypeScript Safety**: Full type coverage prevents common bugs
+
+### Shell Script Security
+- **Safe Command Execution**: Uses proper argument arrays in subprocess calls
+- **Input Validation**: URL and user input validation
+- **No Shell Injection**: Controlled command execution patterns
 
 ## License
 
